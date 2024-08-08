@@ -9,13 +9,27 @@ import locale
 import shutil
 import sys
 
+def _handle_logging() -> None:
+    """
+    Loads logging settings and handlers for terminal formatting and saving the log onto a file.
+    """
+    logger = logging.getLogger()
+    logger.setLevel(logging.INFO)
+
+    log_formatter = RichHandler()
+    log_file_dump = logging.FileHandler(f"{datetime.today().strftime('%d-%m-%Y %H:%M')} log.txt")
+
+    logger.addHandler(log_formatter)
+    logger.addHandler(log_file_dump)
+
 def _load_config() -> dict:
     """
     Loads basic configuration of the script from dependencies and settings file.
     :return:
     """
     pillow_heif.register_heif_opener()
-    logging.basicConfig(level=logging.INFO, handlers=[RichHandler()])
+    _handle_logging()
+
     try:
         with open("settings.json") as settings_file:
             config = json.load(settings_file)
@@ -25,10 +39,10 @@ def _load_config() -> dict:
 
         logging.info("Loaded configuration from 'settings.json'")
         return {"accepted_formats":accepted_formats}
+    
     except FileNotFoundError as e:
         logging.error(f"Cannot fetch 'settings.json. Exception:{e}")
         sys.exit()
-
 
 def load_folder(folder_path: str) -> Path:
     """Loads the specified folder to perform sorting operations. Checks if
@@ -36,7 +50,7 @@ def load_folder(folder_path: str) -> Path:
     try:
         photos_folder: Path = Path(folder_path)
         if photos_folder.is_dir():
-            logging.info(f"Loaded {photos_folder} directory.")
+            logging.info(f"Loaded '{photos_folder}' directory.")
             return photos_folder
         else:
             raise NotADirectoryError(f"The directory '{photos_folder}' does not exist.")
@@ -55,12 +69,12 @@ def set_output_folder(folder_path: str) -> Path:
     try:
         output_folder: Path = Path(folder_path)
         if output_folder.is_dir():
-            logging.info(f"{output_folder} already exists, dou you want to use it anyway? (y/n) ")
+            logging.info(f"'{output_folder}' already exists, dou you want to use it anyway? (y/n) ")
 
             # Output folder permission to use/create
             choice: str = input().lower()
             if len(choice) == 1 and choice == "y":
-                logging.info(f"Set output folder to {output_folder}")
+                logging.info(f"Set output folder to '{output_folder}'")
                 return output_folder
             elif len(choice) == 1 and choice == "n":
                 logging.info("Closing program. Set another output folder path.")
@@ -71,7 +85,7 @@ def set_output_folder(folder_path: str) -> Path:
 
         else:
             output_folder.mkdir()
-            logging.info(f"Created {output_folder} and set it as output folder.")
+            logging.info(f"Created '{output_folder}' and set it as output folder.")
             return output_folder
     except NotADirectoryError as e:
         logging.error(e)
@@ -103,9 +117,9 @@ def get_date_from_metadata(img_file: Image) -> str:
     raw_data = img_file.getexif()
     try:
         if raw_data == {}:
-            raise KeyError(f"{img_file.filename} has empty metadata. It will be ignored from sorting.")
+            raise KeyError(f"'{img_file.filename}' has empty metadata. It will be ignored from sorting.")
         elif 306 not in raw_data:
-            raise KeyError(f"{img_file} has no date metadata. It will be ignored from sorting.")
+            raise KeyError(f"'{img_file}' has no date metadata. It will be ignored from sorting.")
 
         # 306 is the key for date of capture in the EXIF metadata
         raw_date: list = raw_data[306].split(" ")[0].split(":")
@@ -131,7 +145,7 @@ def sort(img_file: Path, date_of_capture: str, output_folder: Path) -> None:
     if output_folder:
         pass
     else:
-        logging.error(f"Missing output folder path: {output_folder}")
+        logging.error(f"Missing output folder path: '{output_folder}'")
         sys.exit()
 
     # If a photo has no date of capture it means its metadata are missing, it will be skipped as warned
@@ -144,10 +158,10 @@ def sort(img_file: Path, date_of_capture: str, output_folder: Path) -> None:
             except Exception as e:
                 logging.error(e)
             else:
-                logging.info(f"Moved {img_file} to {dest_folder}")
+                logging.info(f"Moved '{img_file}' to '{dest_folder}'")
         else:
             dest_folder.mkdir()
-            logging.info(f"Created {dest_folder} folder.")
+            logging.info(f"Created '{dest_folder}' folder.")
             shutil.copy2(str(img_file), str(dest_folder))
 
 def main() -> None:
@@ -156,7 +170,7 @@ def main() -> None:
     config: dict = _load_config()
     supported_ext: list = config["accepted_formats"]
 
-    photo_folder = load_folder("photos")
+    photo_folder = load_folder(r"photos")
     destination_folder = set_output_folder("output")
 
     for photo_file in photo_folder.iterdir():
